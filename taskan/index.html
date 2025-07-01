@@ -13,8 +13,29 @@
             <h1>Taskan</h1>
         </div>
     </header>
-    <main class="container">
-        <p>Welcome to Taskan!</p>
+    <main>
+        <section id="task-form-section">
+            <h2>Añadir Nueva Tarea</h2>
+            <form id="add-task-form">
+                <input type="text" id="task-input" placeholder="Escribe tu tarea aquí..." required>
+                <button type="submit">Añadir Tarea</button>
+            </form>
+        </section>
+
+        <section id="kanban-board">
+            <div class="kanban-column" id="todo-col">
+                <h3>Por Hacer</h3>
+                <div class="tasks-container"></div>
+            </div>
+            <div class="kanban-column" id="inprogress-col">
+                <h3>En Progreso</h3>
+                <div class="tasks-container"></div>
+            </div>
+            <div class="kanban-column" id="done-col">
+                <h3>Hecho</h3>
+                <div class="tasks-container"></div>
+            </div>
+        </section>
     </main>
     <script src="js/main.js"></script>
 </body>
