@@ -17,15 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const taskCard = document.createElement('div');
             taskCard.className = 'task-card';
-            taskCard.draggable = true;
-            taskCard.id = `task-${Date.now()}`;
-            taskCard.innerText = taskText; // Using innerText for security
+            const taskText = taskInput.value.trim();
+            if (taskText === '') {
+                alert('Por favor, escribe una tarea.');
+                return;
+            }
+
+            // Use a more robust way to get the task text for the card content itself
+            const newTaskData = { id: `task-${Date.now()}`, text: taskText };
+            const taskCard = createTaskElement(newTaskData); // Use the new centralized function
 
             todoContainer.appendChild(taskCard);
             taskInput.value = '';
 
-            // Añadir listeners de drag & drop a la nueva tarjeta
-            addDragAndDropListeners(taskCard);
             saveState(); // Guardar estado después de añadir una tarea
         });
     } else {
@@ -40,7 +44,146 @@ function addDragAndDropListeners(taskCard) {
     // console.log('Placeholder: addDragAndDropListeners for', taskCard.id);
     // Esta función se implementará en el siguiente paso.
     // Debería añadir event listeners para 'dragstart', 'dragend', etc.
+    // For now, it will also handle action button listeners
+    addDeleteListener(taskCard);
+    addDuplicateListener(taskCard);
+    addEditListener(taskCard); // Placeholder
 }
+
+// --- Task Action Event Listeners (to be defined more fully) ---
+function addDeleteListener(taskCard) {
+    const deleteButton = taskCard.querySelector('.delete-btn');
+    if (deleteButton) {
+        deleteButton.addEventListener('click', () => {
+            if (confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
+                taskCard.remove();
+                saveState();
+            }
+        });
+    }
+}
+
+function addDuplicateListener(taskCard) {
+    const duplicateButton = taskCard.querySelector('.duplicate-btn');
+    if (duplicateButton) {
+        duplicateButton.addEventListener('click', () => {
+            const originalText = taskCard.querySelector('.task-text').innerText;
+            const newTaskData = {
+                id: `task-${Date.now()}`, // New unique ID
+                text: originalText // Same text content
+            };
+
+            const newCard = createTaskElement(newTaskData); // Creates the new card with all buttons and listeners
+
+            // Insert the new card after the original one in the same column
+            taskCard.parentNode.insertBefore(newCard, taskCard.nextSibling);
+
+            saveState(); // Save the new state
+        });
+    }
+}
+
+function addEditListener(taskCard) {
+    const editButton = taskCard.querySelector('.edit-btn');
+    const taskTextSpan = taskCard.querySelector('.task-text');
+    const actionsDiv = taskCard.querySelector('.task-actions');
+
+    if (editButton && taskTextSpan && actionsDiv) {
+        editButton.addEventListener('click', () => {
+            // Store original text and hide text span & action buttons
+            const originalText = taskTextSpan.innerText;
+            taskTextSpan.style.display = 'none';
+            actionsDiv.style.display = 'none';
+
+            // Create input field
+            const inputField = document.createElement('input');
+            inputField.type = 'text';
+            inputField.className = 'edit-input'; // From CSS
+            inputField.value = originalText;
+
+            // Create Save button
+            const saveButton = document.createElement('button');
+            saveButton.className = 'action-btn save-edit-btn'; // From CSS
+            saveButton.innerText = 'Guardar';
+
+            // Create Cancel button
+            const cancelButton = document.createElement('button');
+            cancelButton.className = 'action-btn cancel-edit-btn'; // From CSS
+            cancelButton.innerText = 'Cancelar';
+
+            // Insert input and buttons before the (now hidden) actionsDiv
+            taskCard.insertBefore(inputField, actionsDiv);
+            taskCard.insertBefore(saveButton, actionsDiv);
+            taskCard.insertBefore(cancelButton, actionsDiv);
+
+            inputField.focus(); // Focus on the input field
+
+            // --- Save Edit Listener ---
+            saveButton.addEventListener('click', () => {
+                const newText = inputField.value.trim();
+                if (newText) {
+                    taskTextSpan.innerText = newText;
+                }
+                // Restore display
+                taskTextSpan.style.display = '';
+                actionsDiv.style.display = '';
+                inputField.remove();
+                saveButton.remove();
+                cancelButton.remove();
+                if (newText) { // Only save if text is not empty, otherwise it's like a cancel if cleared
+                    saveState();
+                }
+            });
+
+            // --- Cancel Edit Listener ---
+            cancelButton.addEventListener('click', () => {
+                // Restore display without saving
+                taskTextSpan.style.display = '';
+                actionsDiv.style.display = '';
+                inputField.remove();
+                saveButton.remove();
+                cancelButton.remove();
+            });
+        });
+    }
+}
+
+
+function createTaskElement(taskData) {
+    const card = document.createElement('div');
+    card.className = 'task-card';
+    card.draggable = true;
+    card.id = taskData.id;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'task-text';
+    textSpan.innerText = taskData.text;
+    card.appendChild(textSpan);
+
+    const actionsContainer = document.createElement('div');
+    actionsContainer.className = 'task-actions';
+
+    const editButton = document.createElement('button');
+    editButton.className = 'action-btn edit-btn';
+    editButton.innerText = 'Editar';
+    actionsContainer.appendChild(editButton);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'action-btn delete-btn';
+    deleteButton.innerText = 'Eliminar';
+    actionsContainer.appendChild(deleteButton);
+
+    const duplicateButton = document.createElement('button');
+    duplicateButton.className = 'action-btn duplicate-btn';
+    duplicateButton.innerText = 'Duplicar';
+    actionsContainer.appendChild(duplicateButton);
+
+    card.appendChild(actionsContainer);
+
+    addDragAndDropListeners(card); // This will now also attach action listeners via the modified function
+    return card;
+}
+
 
 // Registrar el Service Worker
 if ('serviceWorker' in navigator) {
@@ -74,13 +217,22 @@ function saveState() {
     const doneCol = document.querySelector('#done-col .tasks-container');
 
     if (todoCol) {
-        todoCol.querySelectorAll('.task-card').forEach(card => state.todo.push({ id: card.id, text: card.innerText }));
+        todoCol.querySelectorAll('.task-card').forEach(card => {
+            const textSpan = card.querySelector('.task-text');
+            if (textSpan) state.todo.push({ id: card.id, text: textSpan.innerText });
+        });
     }
     if (inprogressCol) {
-        inprogressCol.querySelectorAll('.task-card').forEach(card => state.inprogress.push({ id: card.id, text: card.innerText }));
+        inprogressCol.querySelectorAll('.task-card').forEach(card => {
+            const textSpan = card.querySelector('.task-text');
+            if (textSpan) state.inprogress.push({ id: card.id, text: textSpan.innerText });
+        });
     }
     if (doneCol) {
-        doneCol.querySelectorAll('.task-card').forEach(card => state.done.push({ id: card.id, text: card.innerText }));
+        doneCol.querySelectorAll('.task-card').forEach(card => {
+            const textSpan = card.querySelector('.task-text');
+            if (textSpan) state.done.push({ id: card.id, text: textSpan.innerText });
+        });
     }
 
     localStorage.setItem('kanbanState', JSON.stringify(state));
@@ -92,28 +244,21 @@ function loadState() {
     console.log('Estado cargado desde localStorage:', state);
     if (!state) return;
 
-    const createTaskCardFromData = (taskData) => { // Renamed to avoid conflict if defined elsewhere
-        const card = document.createElement('div');
-        card.className = 'task-card';
-        card.draggable = true;
-        card.id = taskData.id;
-        card.innerText = taskData.text; // Using innerText for security, as it was saved
-        addDragAndDropListeners(card); // Asegúrate que esta función esté definida y funcione correctamente
-        return card;
-    };
+    // createTaskCardFromData is replaced by the more generic createTaskElement
+    // const createTaskCardFromData = (taskData) => { ... };
 
     const todoContainer = document.querySelector('#todo-col .tasks-container');
     const inprogressContainer = document.querySelector('#inprogress-col .tasks-container');
     const doneContainer = document.querySelector('#done-col .tasks-container');
 
     if (todoContainer && state.todo) {
-        state.todo.forEach(task => todoContainer.appendChild(createTaskCardFromData(task)));
+        state.todo.forEach(taskData => todoContainer.appendChild(createTaskElement(taskData)));
     }
     if (inprogressContainer && state.inprogress) {
-        state.inprogress.forEach(task => inprogressContainer.appendChild(createTaskCardFromData(task)));
+        state.inprogress.forEach(taskData => inprogressContainer.appendChild(createTaskElement(taskData)));
     }
     if (doneContainer && state.done) {
-        state.done.forEach(task => doneContainer.appendChild(createTaskCardFromData(task)));
+        state.done.forEach(taskData => doneContainer.appendChild(createTaskElement(taskData)));
     }
     console.log('Estado reconstruido en el DOM.');
 }
