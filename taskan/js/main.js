@@ -1,39 +1,43 @@
 // Basic JavaScript for Taskan app
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Taskan app loaded');
+    console.log('DEBUG: DOMContentLoaded event fired.');
 
     const form = document.getElementById('add-task-form');
     const taskInput = document.getElementById('task-input');
     const todoContainer = document.querySelector('#todo-col .tasks-container');
 
-    if (form && taskInput && todoContainer) { // Check if elements exist
+    if (form && taskInput && todoContainer) {
+        console.log('DEBUG: Form, taskInput, and todoContainer found.');
         form.addEventListener('submit', (e) => {
+            console.log('DEBUG: Form submit event fired.');
             e.preventDefault();
-            const taskText = taskInput.value.trim();
-            if (taskText === '') {
-                alert('Por favor, escribe una tarea.'); // Optional: provide user feedback
-                return;
-            }
 
-            const taskCard = document.createElement('div');
-            taskCard.className = 'task-card';
-            const taskText = taskInput.value.trim();
-            if (taskText === '') {
+            const currentTaskTextInForm = taskInput.value.trim(); // Renamed variable
+            console.log('DEBUG: Task text from input:', currentTaskTextInForm);
+
+            if (currentTaskTextInForm === '') {
                 alert('Por favor, escribe una tarea.');
                 return;
             }
 
-            // Use a more robust way to get the task text for the card content itself
-            const newTaskData = { id: `task-${Date.now()}`, text: taskText };
-            const taskCard = createTaskElement(newTaskData); // Use the new centralized function
+            const newTaskData = { id: `task-${Date.now()}`, text: currentTaskTextInForm }; // Use renamed variable
+            console.log('DEBUG: New task data for createTaskElement:', newTaskData);
 
-            todoContainer.appendChild(taskCard);
+            const newCardElement = createTaskElement(newTaskData);
+            console.log('DEBUG: Task card element created by createTaskElement:', newCardElement);
+
+            if (newCardElement) {
+                todoContainer.appendChild(newCardElement);
+                console.log('DEBUG: New task card appended to todoContainer.');
+            } else {
+                console.error('DEBUG: createTaskElement did not return a card.');
+            }
+
             taskInput.value = '';
-
-            saveState(); // Guardar estado después de añadir una tarea
+            saveState();
         });
     } else {
-        console.error('No se encontraron los elementos del formulario de tareas o el contenedor "Por Hacer". Asegúrate que los IDs y selectores son correctos en tu HTML.');
+        console.error('DEBUG: Form, taskInput, or todoContainer NOT found. Check HTML IDs and selectors.');
     }
 
     loadState(); // Cargar estado cuando el DOM esté listo
@@ -236,13 +240,32 @@ function saveState() {
     }
 
     localStorage.setItem('kanbanState', JSON.stringify(state));
-    console.log('Estado guardado en localStorage:', state);
+    console.log('DEBUG: saveState called. State to save:', state);
 }
 
 function loadState() {
-    const state = JSON.parse(localStorage.getItem('kanbanState'));
-    console.log('Estado cargado desde localStorage:', state);
-    if (!state) return;
+    console.log('DEBUG: loadState called.');
+    const stateJSON = localStorage.getItem('kanbanState');
+    console.log('DEBUG: Raw state from localStorage:', stateJSON);
+    if (!stateJSON) {
+        console.log('DEBUG: No state found in localStorage.');
+        return;
+    }
+
+    let state;
+    try {
+        state = JSON.parse(stateJSON);
+        console.log('DEBUG: Parsed state from localStorage:', state);
+    } catch (e) {
+        console.error('DEBUG: Error parsing state from localStorage:', e);
+        localStorage.removeItem('kanbanState'); // Clear corrupted state
+        return;
+    }
+
+    if (!state) {
+        console.log('DEBUG: Parsed state is null or undefined.');
+        return;
+    }
 
     // createTaskCardFromData is replaced by the more generic createTaskElement
     // const createTaskCardFromData = (taskData) => { ... };
@@ -251,14 +274,35 @@ function loadState() {
     const inprogressContainer = document.querySelector('#inprogress-col .tasks-container');
     const doneContainer = document.querySelector('#done-col .tasks-container');
 
-    if (todoContainer && state.todo) {
-        state.todo.forEach(taskData => todoContainer.appendChild(createTaskElement(taskData)));
+    if (todoContainer && state.todo && Array.isArray(state.todo)) {
+        state.todo.forEach(taskData => {
+            console.log('DEBUG: Loading task into TODO:', taskData);
+            if(taskData && taskData.id && taskData.text !== undefined) {
+                todoContainer.appendChild(createTaskElement(taskData));
+            } else {
+                console.warn('DEBUG: Invalid task data in TODO:', taskData);
+            }
+        });
     }
-    if (inprogressContainer && state.inprogress) {
-        state.inprogress.forEach(taskData => inprogressContainer.appendChild(createTaskElement(taskData)));
+    if (inprogressContainer && state.inprogress && Array.isArray(state.inprogress)) {
+        state.inprogress.forEach(taskData => {
+            console.log('DEBUG: Loading task into INPROGRESS:', taskData);
+            if(taskData && taskData.id && taskData.text !== undefined) {
+                inprogressContainer.appendChild(createTaskElement(taskData));
+            } else {
+                console.warn('DEBUG: Invalid task data in INPROGRESS:', taskData);
+            }
+        });
     }
-    if (doneContainer && state.done) {
-        state.done.forEach(taskData => doneContainer.appendChild(createTaskElement(taskData)));
+    if (doneContainer && state.done && Array.isArray(state.done)) {
+        state.done.forEach(taskData => {
+            console.log('DEBUG: Loading task into DONE:', taskData);
+            if(taskData && taskData.id && taskData.text !== undefined) {
+                doneContainer.appendChild(createTaskElement(taskData));
+            } else {
+                console.warn('DEBUG: Invalid task data in DONE:', taskData);
+            }
+        });
     }
-    console.log('Estado reconstruido en el DOM.');
+    console.log('DEBUG: DOM reconstruction from state complete.');
 }
